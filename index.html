@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>did</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top-bar">
+        <div class="brand">
+          <p class="brand-name">did</p>
+          <p class="brand-sub">Work Timer</p>
+        </div>
+        <nav class="view-tabs" aria-label="Views">
+          <button type="button" class="tab is-active" data-view="timer" id="tabTimer">Timer</button>
+          <button type="button" class="tab" data-view="history" id="tabHistory">Log</button>
+        </nav>
+      </header>
+
+      <main id="timerView" class="view timer-view">
+        <section class="timer-block" aria-live="polite">
+          <p class="timer-label" id="statusLabel">Ready</p>
+          <h1 class="timer" id="timerDisplay">00:00:00</h1>
+          <p class="project-total" id="projectTotal">Total · 00:00:00</p>
+        </section>
+
+        <section class="project-block">
+          <label class="field-label" for="projectSelect">Project</label>
+          <div class="project-row">
+            <span class="color-dot" id="projectColorDot" aria-hidden="true"></span>
+            <select id="projectSelect" class="project-select"></select>
+            <button type="button" id="addProjectBtn" class="icon-btn" title="Add project" aria-label="Add project">
+              +
+            </button>
+            <button
+              type="button"
+              id="deleteProjectBtn"
+              class="icon-btn danger"
+              title="Delete project"
+              aria-label="Delete project"
+            >
+              ×
+            </button>
+          </div>
+          <form id="addProjectForm" class="add-form" hidden>
+            <input
+              id="newProjectInput"
+              class="project-input"
+              type="text"
+              maxlength="40"
+              placeholder="New project name"
+              autocomplete="off"
+            />
+            <button type="submit" class="text-btn">Add</button>
+            <button type="button" id="cancelAddBtn" class="text-btn muted">Cancel</button>
+          </form>
+        </section>
+
+        <button type="button" id="toggleBtn" class="toggle-btn" aria-pressed="false">
+          <span class="toggle-glow" aria-hidden="true"></span>
+          <span class="toggle-label" id="toggleLabel">Start</span>
+        </button>
+
+        <footer class="footer">
+          <button type="button" id="resetSessionBtn" class="link-btn">Discard session</button>
+        </footer>
+      </main>
+
+      <main id="historyView" class="view history-view" hidden>
+        <div class="history-meta">
+          <div>
+            <p class="field-label">All sessions</p>
+            <p class="history-count" id="historyCount">0 records</p>
+          </div>
+          <div class="history-actions">
+            <button type="button" id="copySelectedBtn" class="tool-btn" disabled>Copy</button>
+            <button type="button" id="openCsvBtn" class="tool-btn">Open CSV</button>
+          </div>
+        </div>
+        <p class="history-hint">Click or drag to select · Ctrl/Cmd adds · Ctrl/Cmd+C copies</p>
+        <div class="table-wrap">
+          <table class="records-table" aria-label="Work session log">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Project</th>
+                <th>Time</th>
+                <th>Note</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+          <p class="empty-state" id="emptyHistory" hidden>No sessions yet. Start the timer to log work.</p>
+        </div>
+        <p class="copy-toast" id="copyToast" hidden>Copied for spreadsheet paste</p>
+      </main>
+    </div>
+
+    <div id="confirmModal" class="modal" hidden>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <p class="modal-title" id="confirmTitle">Delete project?</p>
+        <p class="modal-body" id="confirmBody"></p>
+        <div class="modal-actions">
+          <button type="button" id="confirmCancel" class="modal-btn ghost">Cancel</button>
+          <button type="button" id="confirmOk" class="modal-btn danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="noteModal" class="modal" hidden>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+        <p class="modal-title" id="noteTitle">Session note</p>
+        <p class="modal-body" id="noteSummary"></p>
+        <label class="field-label" for="noteInput">Description (optional)</label>
+        <textarea
+          id="noteInput"
+          class="note-input"
+          rows="3"
+          maxlength="240"
+          placeholder="What did you work on?"
+        ></textarea>
+        <div class="modal-actions">
+          <button type="button" id="noteCancel" class="modal-btn ghost">Keep timing</button>
+          <button type="button" id="noteSave" class="modal-btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

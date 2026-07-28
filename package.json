@@ -1,0 +1,23 @@
+{
+  "name": "did",
+  "version": "1.0.0",
+  "description": "A compact work time tracker",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --win portable"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.did.timer",
+    "productName": "did",
+    "win": {
+      "target": "portable"
+    }
+  }
+}
