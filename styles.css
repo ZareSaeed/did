@@ -47,6 +47,7 @@ body {
   grid-template-rows: auto 1fr;
   gap: 14px;
   position: relative;
+  overflow: hidden;
 }
 
 .app::before {
@@ -69,6 +70,42 @@ body {
   justify-content: space-between;
   gap: 10px;
   animation: rise 0.55s ease both;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(155, 107, 255, 0.28);
+  background: rgba(13, 22, 48, 0.55);
+}
+
+.github-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(232, 238, 252, 0.12);
+  border-radius: 8px;
+  background: rgba(13, 22, 48, 0.55);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.github-btn:hover {
+  color: var(--ink);
+  border-color: rgba(155, 107, 255, 0.45);
+  background: rgba(155, 107, 255, 0.14);
 }
 
 .brand-name {
@@ -369,6 +406,8 @@ body {
   grid-template-rows: auto auto 1fr;
   gap: 8px;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .history-meta {
@@ -376,6 +415,7 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+  min-width: 0;
 }
 
 .history-count {
@@ -421,7 +461,8 @@ body {
 
 .table-wrap {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 14px;
   border: 1px solid rgba(155, 107, 255, 0.2);
   background: rgba(7, 11, 24, 0.45);
@@ -429,6 +470,7 @@ body {
 
 .records-table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 0.74rem;
@@ -436,29 +478,30 @@ body {
 
 .records-table th:nth-child(1),
 .records-table td:nth-child(1) {
-  width: 64px;
+  width: 4.4rem;
 }
 
 .records-table th:nth-child(2),
 .records-table td:nth-child(2) {
-  width: 28%;
+  width: 26%;
 }
 
 .records-table th:nth-child(3),
 .records-table td:nth-child(3) {
-  width: 72px;
+  width: 4.6rem;
 }
 
 .records-table th:nth-child(5),
 .records-table td:nth-child(5) {
-  width: 28px;
+  width: 1.75rem;
 }
 
 .records-table th,
 .records-table td {
-  padding: 8px 8px;
+  padding: 8px 6px;
   text-align: left;
   vertical-align: top;
+  overflow: hidden;
 }
 
 .records-table th {
@@ -508,9 +551,20 @@ body {
 
 .project-cell {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 7px;
   font-weight: 500;
+  min-width: 0;
+}
+
+.project-cell span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: break-word;
 }
 
 .project-swatch {
@@ -518,6 +572,7 @@ body {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 0.35em;
 }
 
 .time-cell {
@@ -529,13 +584,18 @@ body {
 .note-cell {
   color: var(--ink-soft);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .actions-cell {
-  width: 28px;
-  padding-right: 6px !important;
+  width: 1.75rem;
+  padding-left: 0 !important;
+  padding-right: 4px !important;
 }
 
 .row-delete {

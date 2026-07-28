@@ -46,6 +46,11 @@ const noteSummary = document.getElementById("noteSummary");
 const noteInput = document.getElementById("noteInput");
 const noteCancel = document.getElementById("noteCancel");
 const noteSave = document.getElementById("noteSave");
+const appVersion = document.getElementById("appVersion");
+const githubBtn = document.getElementById("githubBtn");
+
+const DEFAULT_REPO_URL = "https://github.com/ZareSaeed/did";
+let repoUrl = DEFAULT_REPO_URL;
 
 let state = {
   projects: ["General"],
@@ -571,6 +576,14 @@ openCsvBtn.addEventListener("click", async () => {
   }
 });
 
+githubBtn.addEventListener("click", async () => {
+  if (window.did?.openExternal) {
+    await window.did.openExternal(repoUrl);
+  } else {
+    window.open(repoUrl, "_blank", "noopener,noreferrer");
+  }
+});
+
 noteInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
     e.preventDefault();
@@ -676,6 +689,14 @@ window.addEventListener("beforeunload", () => {
 });
 
 async function init() {
+  if (window.did?.getAppInfo) {
+    try {
+      const info = await window.did.getAppInfo();
+      if (info?.version) appVersion.textContent = `v${info.version}`;
+      if (info?.repoUrl) repoUrl = info.repoUrl;
+    } catch (_) {}
+  }
+
   let loaded = null;
   if (window.did?.loadData) {
     loaded = await window.did.loadData();

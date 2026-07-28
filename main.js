@@ -124,10 +124,23 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+const REPO_URL = "https://github.com/ZareSaeed/did";
+
 ipcMain.handle("load-data", () => loadData());
 ipcMain.handle("save-data", (_event, data) => {
   saveData(data);
   return true;
+});
+ipcMain.handle("get-app-info", () => ({
+  version: app.getVersion(),
+  repoUrl: REPO_URL,
+}));
+ipcMain.handle("open-external", async (_event, url) => {
+  if (typeof url !== "string" || !url.startsWith("https://")) {
+    return { ok: false, error: "Invalid URL" };
+  }
+  await shell.openExternal(url);
+  return { ok: true };
 });
 ipcMain.handle("open-csv", async () => {
   const data = loadData();

@@ -3,12 +3,23 @@
   "version": "1.0.0",
   "description": "A compact work time tracker",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZareSaeed/did.git"
+  },
+  "homepage": "https://github.com/ZareSaeed/did",
+  "bugs": {
+    "url": "https://github.com/ZareSaeed/did/issues"
+  },
+  "author": "ZareSaeed",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --win portable"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "electron": "^35.0.0",
     "electron-builder": "^25.1.8"
@@ -16,8 +27,63 @@
   "build": {
     "appId": "com.did.timer",
     "productName": "did",
+    "copyright": "Copyright © 2026 ZareSaeed",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "package.json"
+    ],
     "win": {
-      "target": "portable"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "did",
+      "artifactName": "did-${version}-win-x64-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "did-${version}-win-x64-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "did-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Utility",
+      "artifactName": "did-${version}-linux-${arch}.${ext}"
     }
   }
 }
