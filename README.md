@@ -7,25 +7,13 @@ Runs on **Windows, macOS, and Linux** from the same repo (Electron).
 
 ## Download
 
-Installers are published on the [Releases](https://github.com/ZareSaeed/did/releases/latest) page.
+Installers are on the [v1.0.0 release](https://github.com/ZareSaeed/did/releases/tag/v1.0.0) page.
 
-| Platform | File |
-|----------|------|
-| Windows | `did-1.0.0-win-x64-setup.exe` (installer) |
-| Windows | `did-1.0.0-win-x64-portable.exe` (portable) |
-| macOS | `did-1.0.0-mac-arm64.dmg` / `did-1.0.0-mac-x64.dmg` |
-| Linux | `did-1.0.0-linux-x64.AppImage` / `did-1.0.0-linux-x64.deb` |
-
-Direct links (v1.0.0):
-
-- [Windows installer](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-win-x64-setup.exe)
-- [Windows portable](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-win-x64-portable.exe)
-- [macOS DMG (Apple Silicon)](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-mac-arm64.dmg)
-- [macOS DMG (Intel)](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-mac-x64.dmg)
-- [Linux AppImage](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-linux-x64.AppImage)
-- [Linux deb](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-linux-x64.deb)
-
-Pushing a `v*` tag runs GitHub Actions to build all platforms and attach them to the release.
+| Platform | Package |
+|----------|---------|
+| Windows | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-win-x64-portable.exe) |
+| macOS | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-mac-x64.dmg) |
+| Linux | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.0.0/did-1.0.0-linux-amd64.deb) |
 
 ## Run from source
 
@@ -43,7 +31,7 @@ npm run dist:mac     # macOS (requires macOS)
 npm run dist:linux   # Linux AppImage + deb
 ```
 
-Outputs land in `dist/`.
+Outputs land in `dist/`. Pushing a `v*` tag builds all platforms via GitHub Actions.
 
 ## Features
 
