@@ -1,6 +1,6 @@
 # did
 
-Compact desktop work-time tracker — about the size of Windows Calculator.
+Compact desktop work-time tracker.
 
 **Version:** `1.0.0`  
 Runs on **Windows, macOS, and Linux** from the same repo (Electron).
