@@ -13,7 +13,7 @@
   },
   "author": {
     "name": "ZareSaeed",
-    "email": "ZareSaeed@users.noreply.github.com",
+    "email": "saeedzare@live.com",
     "url": "https://github.com/ZareSaeed"
   },
   "license": "MIT",
@@ -87,7 +87,7 @@
         }
       ],
       "category": "Utility",
-      "maintainer": "ZareSaeed <ZareSaeed@users.noreply.github.com>",
+      "maintainer": "ZareSaeed <saeedzare@live.com>",
       "artifactName": "did-${version}-linux-${arch}.${ext}"
     }
   }
