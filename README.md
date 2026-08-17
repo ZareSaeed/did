@@ -19,8 +19,16 @@
     <td align="center"><strong>📋 Log</strong></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/timer.png" alt="did timer view" width="320" /></td>
-    <td><img src="docs/screenshots/log.png" alt="did session log view" width="320" /></td>
+    <td><img src="docs/screenshots/timer.png" alt="did timer view — ready to start" width="320" /></td>
+    <td><img src="docs/screenshots/log.png" alt="did session log with work history" width="320" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>✏️ Edit project</strong></td>
+    <td align="center"><strong>⚡ Power-cut recovery</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/edit-project.png" alt="edit project — name, description, and color" width="320" /></td>
+    <td><img src="docs/screenshots/power-recovery.png" alt="interrupted session marked with yellow triangle" width="320" /></td>
   </tr>
 </table>
 
