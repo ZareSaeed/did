@@ -6,15 +6,20 @@ const DATA_FILE = path.join(app.getPath("userData"), "did-data.json");
 const LEGACY_DATA_FILE = path.join(app.getPath("userData"), "work-timer-data.json");
 const CSV_FILE = path.join(app.getPath("userData"), "did-log.csv");
 
+// Chromium's shader cache is noisy on Windows and unnecessary for this app.
+app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+
 const defaultData = {
   projects: ["General"],
   projectColors: { General: "#2ee6a6" },
+  projectDescriptions: { General: "" },
   selectedProject: "General",
   records: [],
   sessionSeconds: 0,
   sessionStartedAt: null,
   isRunning: false,
   lastTick: null,
+  lastHeartbeat: null,
 };
 
 function csvEscape(value) {
@@ -42,6 +47,7 @@ function recordsToCsv(records) {
     "seconds",
     "duration",
     "description",
+    "interrupted",
   ];
   const sorted = [...(records || [])].sort(
     (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime()
@@ -57,6 +63,7 @@ function recordsToCsv(records) {
         record.seconds,
         formatDuration(record.seconds),
         record.description || "",
+        record.interrupted ? "yes" : "",
       ]
         .map(csvEscape)
         .join(",")
@@ -112,13 +119,27 @@ function createWindow() {
   win.loadFile("index.html");
 }
 
-app.whenReady().then(() => {
-  createWindow();
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const [win] = BrowserWindow.getAllWindows();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
   });
-});
+
+  app.whenReady().then(() => {
+    createWindow();
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

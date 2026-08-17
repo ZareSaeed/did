@@ -19,7 +19,9 @@ const statusLabel = document.getElementById("statusLabel");
 const projectSelect = document.getElementById("projectSelect");
 const projectColorDot = document.getElementById("projectColorDot");
 const addProjectBtn = document.getElementById("addProjectBtn");
+const editProjectBtn = document.getElementById("editProjectBtn");
 const deleteProjectBtn = document.getElementById("deleteProjectBtn");
+const projectDesc = document.getElementById("projectDesc");
 const addProjectForm = document.getElementById("addProjectForm");
 const newProjectInput = document.getElementById("newProjectInput");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
@@ -48,19 +50,28 @@ const noteCancel = document.getElementById("noteCancel");
 const noteSave = document.getElementById("noteSave");
 const appVersion = document.getElementById("appVersion");
 const githubBtn = document.getElementById("githubBtn");
+const editProjectModal = document.getElementById("editProjectModal");
+const editProjectName = document.getElementById("editProjectName");
+const editProjectDesc = document.getElementById("editProjectDesc");
+const editColorPicker = document.getElementById("editColorPicker");
+const editProjectError = document.getElementById("editProjectError");
+const editProjectCancel = document.getElementById("editProjectCancel");
+const editProjectSave = document.getElementById("editProjectSave");
 
 const DEFAULT_REPO_URL = "https://github.com/ZareSaeed/did";
 let repoUrl = DEFAULT_REPO_URL;
 
 let state = {
   projects: ["General"],
-  projectColors: { General: COLOR_PALETTE[0] },
+  projectColors: { General: "#2ee6a6" },
+  projectDescriptions: { General: "" },
   selectedProject: "General",
   records: [],
   sessionSeconds: 0,
   sessionStartedAt: null,
   isRunning: false,
   lastTick: null,
+  lastHeartbeat: null,
 };
 
 let tickInterval = null;
@@ -75,6 +86,8 @@ let dragSelecting = false;
 let dragAnchorId = null;
 let dragMoved = false;
 let suppressClick = false;
+let editingProjectName = null;
+let editSelectedColor = COLOR_PALETTE[0];
 
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -150,14 +163,19 @@ function catchUpRunningTime() {
   state.lastTick = now;
 }
 
-function buildRecordFromSession(description = "") {
+function clearSession() {
+  state.sessionSeconds = 0;
+  state.sessionStartedAt = null;
+  state.lastTick = null;
+  state.lastHeartbeat = null;
+  state.isRunning = false;
+}
+
+function buildRecordFromSession(description = "", options = {}) {
   catchUpRunningTime();
   const seconds = Math.floor(state.sessionSeconds);
   if (seconds <= 0 || !state.sessionStartedAt) {
-    state.sessionSeconds = 0;
-    state.sessionStartedAt = null;
-    state.lastTick = null;
-    state.isRunning = false;
+    clearSession();
     return null;
   }
 
@@ -165,21 +183,37 @@ function buildRecordFromSession(description = "") {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     project: state.selectedProject,
     startedAt: state.sessionStartedAt,
-    endedAt: new Date().toISOString(),
+    endedAt: options.endedAt || new Date().toISOString(),
     seconds,
     description: String(description || "").trim(),
   };
 
+  if (options.interrupted) record.interrupted = true;
+
   state.records.push(record);
-  state.sessionSeconds = 0;
-  state.sessionStartedAt = null;
-  state.lastTick = null;
-  state.isRunning = false;
+  clearSession();
   return record;
 }
 
-function commitCurrentSession(description = "") {
-  return buildRecordFromSession(description);
+function commitCurrentSession(description = "", options = {}) {
+  return buildRecordFromSession(description, options);
+}
+
+// The app never gets a chance to close a session cleanly during a power cut,
+// so the last persisted heartbeat is the most accurate end time available.
+function recoveredEndTime(loaded) {
+  const candidates = [loaded.lastHeartbeat, loaded.lastTick];
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined) continue;
+    const date = new Date(candidate);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+
+  const started = new Date(loaded.sessionStartedAt).getTime();
+  if (!Number.isNaN(started)) {
+    return new Date(started + Math.floor(loaded.sessionSeconds) * 1000).toISOString();
+  }
+  return new Date().toISOString();
 }
 
 function setView(view) {
@@ -189,6 +223,103 @@ function setView(view) {
   tabTimer.classList.toggle("is-active", isTimer);
   tabHistory.classList.toggle("is-active", !isTimer);
   if (!isTimer) renderHistory();
+}
+
+function projectDescription(name) {
+  if (!state.projectDescriptions) state.projectDescriptions = {};
+  return state.projectDescriptions[name] || "";
+}
+
+function renderColorPicker(selected) {
+  editColorPicker.innerHTML = "";
+  for (const color of COLOR_PALETTE) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "color-swatch-btn";
+    btn.style.background = color;
+    btn.title = color;
+    btn.setAttribute("aria-label", `Color ${color}`);
+    if (color === selected) btn.classList.add("is-selected");
+    btn.addEventListener("click", () => {
+      editSelectedColor = color;
+      renderColorPicker(color);
+    });
+    editColorPicker.appendChild(btn);
+  }
+}
+
+function openEditProjectModal() {
+  if (pausePromptOpen) return;
+  editingProjectName = state.selectedProject;
+  editProjectName.value = editingProjectName;
+  editProjectDesc.value = projectDescription(editingProjectName);
+  editSelectedColor = projectColor(editingProjectName);
+  editProjectError.hidden = true;
+  editProjectError.textContent = "";
+  renderColorPicker(editSelectedColor);
+  editProjectModal.hidden = false;
+  setTimeout(() => editProjectName.focus(), 30);
+}
+
+function closeEditProjectModal() {
+  editProjectModal.hidden = true;
+  editingProjectName = null;
+}
+
+function saveProjectEdit() {
+  if (!editingProjectName) return;
+
+  const cleaned = editProjectName.value.trim().replace(/\s+/g, " ");
+  if (!cleaned) {
+    editProjectError.textContent = "Project name is required.";
+    editProjectError.hidden = false;
+    return;
+  }
+
+  const duplicate = state.projects.find(
+    (p) => p.toLowerCase() === cleaned.toLowerCase() && p !== editingProjectName
+  );
+  if (duplicate) {
+    editProjectError.textContent = "A project with that name already exists.";
+    editProjectError.hidden = false;
+    return;
+  }
+
+  const oldName = editingProjectName;
+  const description = editProjectDesc.value.trim();
+  const color = editSelectedColor;
+
+  if (!state.projectDescriptions) state.projectDescriptions = {};
+  if (!state.projectColors) state.projectColors = {};
+
+  if (oldName !== cleaned) {
+    state.projects = state.projects.map((p) => (p === oldName ? cleaned : p));
+    delete state.projectColors[oldName];
+    delete state.projectDescriptions[oldName];
+    for (const record of state.records) {
+      if (record.project === oldName) record.project = cleaned;
+    }
+    if (state.selectedProject === oldName) state.selectedProject = cleaned;
+  }
+
+  state.projectColors[cleaned] = color;
+  state.projectDescriptions[cleaned] = description;
+
+  closeEditProjectModal();
+  renderProjects();
+  render();
+  persist();
+}
+
+function renderProjectDesc() {
+  const desc = projectDescription(state.selectedProject);
+  if (desc) {
+    projectDesc.textContent = desc;
+    projectDesc.hidden = false;
+  } else {
+    projectDesc.textContent = "";
+    projectDesc.hidden = true;
+  }
 }
 
 function renderProjects() {
@@ -202,6 +333,7 @@ function renderProjects() {
     projectSelect.appendChild(option);
   }
   deleteProjectBtn.disabled = state.projects.length <= 1;
+  renderProjectDesc();
 }
 
 function updateCopyButton() {
@@ -229,11 +361,21 @@ function renderHistory() {
     if (selectedIds.has(record.id)) tr.classList.add("is-selected");
 
     const note = record.description ? escapeHtml(record.description) : "—";
+    const interruptedFlag = record.interrupted
+      ? `<span class="interrupted-flag" title="Ended by an unexpected shutdown (power cut or crash). End time is the last second the timer recorded." aria-label="Interrupted by power loss">
+          <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true">
+            <path fill="currentColor" d="M12 2 1 21h22L12 2zm1 15h-2v2h2v-2zm0-8h-2v6h2V9z" />
+          </svg>
+        </span>`
+      : "";
     tr.innerHTML = `
       <td class="when-cell">${formatWhen(record.endedAt).replace("\n", "<br>")}</td>
       <td>
         <div class="project-cell">
-          <span class="project-swatch" style="background:${color}"></span>
+          <span class="project-marks">
+            <span class="project-swatch" style="background:${color}"></span>
+            ${interruptedFlag}
+          </span>
           <span>${escapeHtml(record.project)}</span>
         </div>
       </td>
@@ -257,10 +399,21 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function updateBackground() {
+  let bgState = "idle";
+  if (state.isRunning) bgState = "recording";
+  else if (state.sessionSeconds > 0 || pausePromptOpen) bgState = "paused";
+
+  window.spaceBg?.setState(bgState);
+  window.spaceBg?.setAccent(projectColor(state.selectedProject));
+}
+
 function render() {
   const color = projectColor(state.selectedProject);
   document.documentElement.style.setProperty("--project-color", color);
   projectColorDot.style.background = color;
+  renderProjectDesc();
+  updateBackground();
 
   timerDisplay.textContent = formatTime(state.sessionSeconds);
   projectTotal.textContent = `Total · ${formatTime(getProjectTotal(state.selectedProject))}`;
@@ -295,6 +448,7 @@ function startTicking() {
     if (elapsed <= 0) return;
     state.sessionSeconds += elapsed;
     state.lastTick = now;
+    state.lastHeartbeat = new Date(now).toISOString();
     render();
     persist();
   }, 250);
@@ -355,6 +509,7 @@ async function pauseWithNote() {
     // Keep timing
     state.isRunning = true;
     state.lastTick = Date.now();
+    state.lastHeartbeat = new Date().toISOString();
     startTicking();
     render();
     persist();
@@ -370,13 +525,14 @@ async function setRunning(running) {
   if (running === state.isRunning) return;
   if (pausePromptOpen) return;
 
-  if (running) {
+    if (running) {
     if (!state.sessionStartedAt) {
       state.sessionSeconds = 0;
       state.sessionStartedAt = new Date().toISOString();
     }
     state.isRunning = true;
     state.lastTick = Date.now();
+    state.lastHeartbeat = new Date().toISOString();
     startTicking();
     render();
     persist();
@@ -421,6 +577,8 @@ function addProject(name) {
 
   state.projects.push(cleaned);
   state.projectColors[cleaned] = nextProjectColor();
+  if (!state.projectDescriptions) state.projectDescriptions = {};
+  state.projectDescriptions[cleaned] = "";
   state.selectedProject = cleaned;
   state.sessionSeconds = 0;
   state.sessionStartedAt = null;
@@ -560,8 +718,17 @@ function showAddForm(show) {
 toggleBtn.addEventListener("click", () => setRunning(!state.isRunning));
 projectSelect.addEventListener("change", (e) => switchProject(e.target.value));
 addProjectBtn.addEventListener("click", () => showAddForm(true));
+editProjectBtn.addEventListener("click", () => openEditProjectModal());
 cancelAddBtn.addEventListener("click", () => showAddForm(false));
 deleteProjectBtn.addEventListener("click", () => deleteSelectedProject());
+editProjectCancel.addEventListener("click", () => closeEditProjectModal());
+editProjectSave.addEventListener("click", () => saveProjectEdit());
+editProjectName.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    saveProjectEdit();
+  }
+});
 tabTimer.addEventListener("click", () => setView("timer"));
 tabHistory.addEventListener("click", () => setView("history"));
 confirmCancel.addEventListener("click", () => closeConfirm(false));
@@ -710,6 +877,7 @@ async function init() {
       ...state,
       ...loaded,
       projectColors: { ...state.projectColors, ...(loaded.projectColors || {}) },
+      projectDescriptions: { ...state.projectDescriptions, ...(loaded.projectDescriptions || {}) },
       records: Array.isArray(loaded.records) ? loaded.records : [],
       projects: Array.isArray(loaded.projects) && loaded.projects.length ? loaded.projects : ["General"],
     };
@@ -737,22 +905,32 @@ async function init() {
     }
   }
 
-  for (const project of state.projects) ensureProjectColor(project);
+  for (const project of state.projects) {
+    ensureProjectColor(project);
+    if (!state.projectDescriptions) state.projectDescriptions = {};
+    if (typeof state.projectDescriptions[project] !== "string") {
+      state.projectDescriptions[project] = "";
+    }
+  }
 
   if (!state.projects.includes(state.selectedProject)) {
     state.selectedProject = state.projects[0] || "General";
   }
 
-  if (loaded?.isRunning && loaded.sessionSeconds > 0 && loaded.sessionStartedAt) {
+  // A leftover session means the previous run never closed it: power cut or crash.
+  if (loaded?.sessionStartedAt && loaded.sessionSeconds > 0) {
+    const endedAt = recoveredEndTime(loaded);
+    state.isRunning = false;
+    state.lastTick = null;
     state.sessionSeconds = Math.floor(loaded.sessionSeconds);
     state.sessionStartedAt = loaded.sessionStartedAt;
-    commitCurrentSession("");
+    state.selectedProject = state.projects.includes(loaded.selectedProject)
+      ? loaded.selectedProject
+      : state.selectedProject;
+    commitCurrentSession("", { endedAt, interrupted: true });
   }
 
-  state.isRunning = false;
-  state.lastTick = null;
-  state.sessionSeconds = 0;
-  state.sessionStartedAt = null;
+  clearSession();
 
   renderProjects();
   render();
