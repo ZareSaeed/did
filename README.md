@@ -1,28 +1,68 @@
-# did
+<p align="center">
+  <strong>did</strong><br />
+  A tiny, beautiful work timer — about the size of Windows Calculator.
+</p>
 
-Compact desktop work-time tracker.
+<p align="center">
+  <a href="https://github.com/ZareSaeed/did/releases/latest"><img src="https://img.shields.io/github/v/release/ZareSaeed/did?label=version&color=2ee6a6" alt="Version" /></a>
+  <a href="https://github.com/ZareSaeed/did/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-9b6bff" alt="License" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-3d6cff" alt="Platform" />
+</p>
 
-**Version:** `1.1.0`  
-Runs on **Windows, macOS, and Linux** from the same repo (Electron).
+---
 
-## Download
+## ✨ Preview
 
-Installers are on the [latest release](https://github.com/ZareSaeed/did/releases/latest) page.
+<table>
+  <tr>
+    <td align="center"><strong>⏱️ Timer</strong></td>
+    <td align="center"><strong>📋 Log</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/timer.png" alt="did timer view" width="320" /></td>
+    <td><img src="docs/screenshots/log.png" alt="did session log view" width="320" /></td>
+  </tr>
+</table>
 
-| Platform | Package |
-|----------|---------|
-| Windows | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-portable.exe) |
-| macOS | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-x64.dmg) |
-| Linux | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-amd64.deb) |
+> 🌌 Space-themed backgrounds shift with your state — calm when idle, alive while recording, hushed when paused.
 
-## Run from source
+---
+
+## 📥 Download
+
+Get the latest installers from **[Releases](https://github.com/ZareSaeed/did/releases/latest)**.
+
+| Platform | 📦 Packages |
+|----------|-------------|
+| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-portable.exe) |
+| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-x64.dmg) |
+| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-amd64.deb) |
+
+### 🔄 Updating an existing install
+
+Your data is stored separately from the app — updating is safe.
+
+1. Close **did**
+2. Download the new installer for your platform
+3. Run it (installs over the old version)
+4. Open **did** — projects and logs are still there
+
+**Windows data folder:** `%APPDATA%\did`
+
+---
+
+## 🚀 Quick start (from source)
 
 ```bash
+git clone https://github.com/ZareSaeed/did.git
+cd did
 npm install
 npm start
 ```
 
-## Build installers locally
+---
+
+## 🛠️ Build installers locally
 
 ```bash
 npm install
@@ -31,23 +71,50 @@ npm run dist:mac     # macOS (requires macOS)
 npm run dist:linux   # Linux AppImage + deb
 ```
 
-Outputs land in `dist/`. Pushing a `v*` tag builds all platforms via GitHub Actions.
+Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all platforms.
 
-## Features
+---
 
-- Large **Start / Pause** button
-- Optional description popup when pausing a session
-- Add / select / edit / delete projects (delete asks for confirmation)
-- Each project gets a distinct color
-- Session log kept forever (Timer ↔ Log tabs)
-- Delete individual log rows (with confirmation)
-- Select rows (click or drag) and **Copy** as spreadsheet-ready TSV
-- **Open CSV** keeps a live log CSV next to app data
-- Space-themed animated backgrounds (idle / recording / paused)
-- Power-cut recovery with accurate end time + warning flag in log
-- Tiny GitHub button + in-app version badge
-- Data saved automatically between sessions
+## 🎯 Features
 
-## License
+### ⏱️ Timer
+- Big **Start / Pause** button
+- Optional note popup when pausing a session
+- Per-project color accents on the timer UI
 
-MIT
+### 📁 Projects
+- Add, select, **edit** (name · description · color), and delete
+- Each project gets its own distinct color
+- Edits apply to existing log entries too
+
+### 📋 Session log
+- Full history kept forever (Timer ↔ Log tabs)
+- Delete individual rows (with confirmation)
+- Click or drag to select · **Copy** as spreadsheet-ready TSV
+- **Open CSV** — live export next to your app data
+
+### 🌌 Backgrounds
+- Animated space scenes for three states:
+  - **Ready** — calm blue nebula
+  - **Recording** — bright green/teal energy
+  - **Paused** — soft purple stillness
+
+### ⚡ Power-cut recovery
+- If the PC shuts down mid-session, **did** recovers the record on next launch
+- End time = last second the timer actually recorded
+- ⚠️ Yellow triangle under the project dot marks interrupted sessions
+
+### 🔧 Extras
+- GitHub button + in-app version badge
+- Auto-save between sessions
+- Single-instance lock (no duplicate windows fighting over cache)
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
+
+<p align="center">
+  <sub>Made with ☕ and 🌌</sub>
+</p>
