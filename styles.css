@@ -855,12 +855,30 @@ body {
   position: relative;
   padding: 8px 10px 10px;
   border-radius: 16px;
-  border: 1px solid rgba(155, 107, 255, 0.28);
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(61, 108, 255, 0.16), transparent 55%),
-    rgba(7, 11, 24, 0.62);
+  border: 1px solid transparent;
+  background: rgba(7, 11, 24, 0.62);
   box-shadow: 0 8px 22px rgba(4, 8, 18, 0.35) inset;
   min-width: 0;
+}
+
+.time-picker[data-which="start"] {
+  border-color: rgba(46, 230, 166, 0.34);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(46, 230, 166, 0.2), transparent 58%),
+    rgba(7, 11, 24, 0.62);
+  box-shadow:
+    0 8px 22px rgba(4, 8, 18, 0.35) inset,
+    0 0 18px rgba(46, 230, 166, 0.08);
+}
+
+.time-picker[data-which="end"] {
+  border-color: rgba(155, 107, 255, 0.4);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(155, 107, 255, 0.22), transparent 58%),
+    rgba(7, 11, 24, 0.62);
+  box-shadow:
+    0 8px 22px rgba(4, 8, 18, 0.35) inset,
+    0 0 18px rgba(155, 107, 255, 0.1);
 }
 
 .time-picker-label {
@@ -871,6 +889,34 @@ body {
   font-weight: 600;
   text-align: center;
   margin-bottom: 4px;
+}
+
+.time-picker-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.time-picker[data-which="start"] .time-picker-label {
+  color: #7af0c8;
+}
+
+.time-picker[data-which="start"] .time-picker-label::before {
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(46, 230, 166, 0.75);
+}
+
+.time-picker[data-which="end"] .time-picker-label {
+  color: #c4b0ff;
+}
+
+.time-picker[data-which="end"] .time-picker-label::before {
+  background: var(--purple);
+  box-shadow: 0 0 8px rgba(155, 107, 255, 0.75);
 }
 
 .time-picker-row {
@@ -891,12 +937,22 @@ body {
   height: 38px;
   transform: translateY(-50%);
   border-radius: 12px;
-  background: linear-gradient(90deg, rgba(46, 230, 166, 0.12), rgba(61, 108, 255, 0.2), rgba(155, 107, 255, 0.16));
-  box-shadow:
-    0 0 0 1px rgba(232, 238, 252, 0.08) inset,
-    0 0 18px rgba(61, 108, 255, 0.18);
   pointer-events: none;
   z-index: 0;
+}
+
+.time-picker[data-which="start"] .time-wheel-highlight {
+  background: linear-gradient(90deg, rgba(46, 230, 166, 0.22), rgba(61, 108, 255, 0.12));
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 166, 0.16) inset,
+    0 0 18px rgba(46, 230, 166, 0.18);
+}
+
+.time-picker[data-which="end"] .time-wheel-highlight {
+  background: linear-gradient(90deg, rgba(155, 107, 255, 0.22), rgba(61, 108, 255, 0.14));
+  box-shadow:
+    0 0 0 1px rgba(155, 107, 255, 0.18) inset,
+    0 0 18px rgba(155, 107, 255, 0.2);
 }
 
 .time-colon {
@@ -965,7 +1021,22 @@ body {
   font-weight: 700;
   opacity: 1;
   transform: scale(1);
-  text-shadow: 0 0 12px rgba(61, 108, 255, 0.35);
+}
+
+.time-picker[data-which="start"] .time-wheel-item.is-active {
+  text-shadow: 0 0 12px rgba(46, 230, 166, 0.45);
+}
+
+.time-picker[data-which="end"] .time-wheel-item.is-active {
+  text-shadow: 0 0 12px rgba(155, 107, 255, 0.5);
+}
+
+.time-picker[data-which="start"] .time-colon {
+  color: rgba(46, 230, 166, 0.55);
+}
+
+.time-picker[data-which="end"] .time-colon {
+  color: rgba(196, 176, 255, 0.6);
 }
 
 .time-wheel-edit {
@@ -983,7 +1054,14 @@ body {
   color: var(--ink);
   font: 700 1.15rem var(--mono);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(61, 108, 255, 0.45);
+}
+
+.time-picker[data-which="start"] .time-wheel-edit {
+  box-shadow: 0 0 0 2px rgba(46, 230, 166, 0.5);
+}
+
+.time-picker[data-which="end"] .time-wheel-edit {
+  box-shadow: 0 0 0 2px rgba(155, 107, 255, 0.55);
 }
 
 .time-wheel-edit[hidden] {
