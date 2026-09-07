@@ -19,7 +19,7 @@
         <div class="brand">
           <div class="brand-row">
             <p class="brand-name">did</p>
-            <span class="version-badge" id="appVersion">v1.1.0</span>
+            <span class="version-badge" id="appVersion">v1.1.1</span>
             <button type="button" id="githubBtn" class="github-btn" title="Open on GitHub" aria-label="Open GitHub repository">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
                 <path
@@ -146,13 +146,59 @@
         <textarea
           id="noteInput"
           class="note-input"
-          rows="3"
-          maxlength="240"
+          rows="6"
+          maxlength="4000"
           placeholder="What did you work on?"
         ></textarea>
         <div class="modal-actions">
           <button type="button" id="noteCancel" class="modal-btn ghost">Keep timing</button>
           <button type="button" id="noteSave" class="modal-btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editRecordModal" class="modal" hidden>
+      <div class="modal-panel modal-panel-wide" role="dialog" aria-modal="true" aria-labelledby="editRecordTitle">
+        <p class="modal-title" id="editRecordTitle">Edit session</p>
+        <p class="modal-body" id="editRecordSummary"></p>
+        <p class="field-label">Times</p>
+        <div class="time-wheels">
+          <div class="time-picker" data-which="start">
+            <p class="time-picker-label">Start</p>
+            <div class="time-picker-row">
+              <span class="time-wheel-highlight" aria-hidden="true"></span>
+              <div class="time-wheel" id="startHourWheel" data-max="24" aria-label="Start hour"></div>
+              <span class="time-colon">:</span>
+              <div class="time-wheel" id="startMinuteWheel" data-max="60" aria-label="Start minute"></div>
+              <span class="time-colon">:</span>
+              <div class="time-wheel" id="startSecondWheel" data-max="60" aria-label="Start second"></div>
+            </div>
+          </div>
+          <div class="time-picker" data-which="end">
+            <p class="time-picker-label">End</p>
+            <div class="time-picker-row">
+              <span class="time-wheel-highlight" aria-hidden="true"></span>
+              <div class="time-wheel" id="endHourWheel" data-max="24" aria-label="End hour"></div>
+              <span class="time-colon">:</span>
+              <div class="time-wheel" id="endMinuteWheel" data-max="60" aria-label="End minute"></div>
+              <span class="time-colon">:</span>
+              <div class="time-wheel" id="endSecondWheel" data-max="60" aria-label="End second"></div>
+            </div>
+          </div>
+        </div>
+        <p class="duration-live" id="editRecordDuration">Duration · 00:00:00</p>
+        <label class="field-label" for="editRecordNote">Note</label>
+        <textarea
+          id="editRecordNote"
+          class="note-input"
+          rows="6"
+          maxlength="4000"
+          placeholder="What did you work on?"
+        ></textarea>
+        <p class="modal-error" id="editRecordError" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="editRecordCancel" class="modal-btn ghost">Cancel</button>
+          <button type="button" id="editRecordSave" class="modal-btn primary">Save</button>
         </div>
       </div>
     </div>

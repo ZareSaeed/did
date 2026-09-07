@@ -99,10 +99,10 @@ function saveData(data) {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 420,
-    height: 640,
-    minWidth: 360,
-    minHeight: 560,
+    width: 440,
+    height: 660,
+    minWidth: 400,
+    minHeight: 620,
     resizable: true,
     maximizable: false,
     fullscreenable: false,
@@ -116,6 +116,17 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const closeShortcut =
+      input.key.toLowerCase() === "w" &&
+      (input.control || input.meta) &&
+      !input.alt &&
+      !input.shift;
+    if (!closeShortcut) return;
+    event.preventDefault();
+    win.close();
+  });
   win.loadFile("index.html");
 }
 

@@ -24,11 +24,19 @@
   </tr>
   <tr>
     <td align="center"><strong>✏️ Edit project</strong></td>
-    <td align="center"><strong>⚡ Power-cut recovery</strong></td>
+    <td align="center"><strong>🕒 Edit session</strong></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/edit-project.png" alt="edit project — name, description, and color" width="320" /></td>
-    <td><img src="docs/screenshots/power-recovery.png" alt="interrupted session marked with yellow triangle" width="320" /></td>
+    <td><img src="docs/screenshots/edit-session.png" alt="edit session times and note" width="320" /></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>⚡ Power-cut recovery</strong></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/screenshots/power-recovery.png" alt="interrupted session marked with yellow triangle" width="320" />
+    </td>
   </tr>
 </table>
 
@@ -42,9 +50,9 @@ Get the latest installers from **[Releases](https://github.com/ZareSaeed/did/rel
 
 | Platform | 📦 Packages |
 |----------|-------------|
-| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-win-x64-portable.exe) |
-| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-mac-x64.dmg) |
-| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.0/did-1.1.0-linux-amd64.deb) |
+| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-win-x64-portable.exe) |
+| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-mac-x64.dmg) |
+| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.1/did-1.1.1-linux-amd64.deb) |
 
 ### 🔄 Updating an existing install
 
@@ -87,7 +95,7 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 
 ### ⏱️ Timer
 - Big **Start / Pause** button
-- Optional note popup when pausing a session
+- Optional note popup when pausing a session (up to 4000 characters)
 - Per-project color accents on the timer UI
 
 ### 📁 Projects
@@ -97,8 +105,9 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 
 ### 📋 Session log
 - Full history kept forever (Timer ↔ Log tabs)
+- Edit session times and notes (notes up to 4000 characters)
 - Delete individual rows (with confirmation)
-- Click or drag to select · **Copy** as spreadsheet-ready TSV
+- Click or drag to select · **Copy** as spreadsheet-ready TSV (oldest first)
 - **Open CSV** — live export next to your app data
 
 ### 🌌 Backgrounds

@@ -57,6 +57,13 @@ const editColorPicker = document.getElementById("editColorPicker");
 const editProjectError = document.getElementById("editProjectError");
 const editProjectCancel = document.getElementById("editProjectCancel");
 const editProjectSave = document.getElementById("editProjectSave");
+const editRecordModal = document.getElementById("editRecordModal");
+const editRecordSummary = document.getElementById("editRecordSummary");
+const editRecordNote = document.getElementById("editRecordNote");
+const editRecordError = document.getElementById("editRecordError");
+const editRecordDuration = document.getElementById("editRecordDuration");
+const editRecordCancel = document.getElementById("editRecordCancel");
+const editRecordSave = document.getElementById("editRecordSave");
 
 const DEFAULT_REPO_URL = "https://github.com/ZareSaeed/did";
 let repoUrl = DEFAULT_REPO_URL;
@@ -88,6 +95,12 @@ let dragMoved = false;
 let suppressClick = false;
 let editingProjectName = null;
 let editSelectedColor = COLOR_PALETTE[0];
+let editingRecordId = null;
+let editTimes = {
+  start: { h: 0, m: 0, s: 0 },
+  end: { h: 0, m: 0, s: 0 },
+};
+const WHEEL_ITEM = 38;
 
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -115,6 +128,34 @@ function formatTimeOnly(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function pad2(n) {
+  return String(Math.max(0, Math.floor(Number(n) || 0))).padStart(2, "0");
+}
+
+function clampUnit(value, maxExclusive) {
+  const n = typeof value === "number" ? Math.round(value) : Number.parseInt(String(value).replace(/\D/g, ""), 10);
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(maxExclusive - 1, n));
+}
+
+function getLocalHms(iso) {
+  const d = new Date(iso);
+  return { h: d.getHours(), m: d.getMinutes(), s: d.getSeconds() };
+}
+
+function setLocalHms(iso, h, m, s) {
+  const d = new Date(iso);
+  d.setHours(h, m, s, 0);
+  return d.toISOString();
+}
+
+function durationFromEditTimes(record) {
+  if (!record) return 0;
+  const startIso = setLocalHms(record.startedAt, editTimes.start.h, editTimes.start.m, editTimes.start.s);
+  const endIso = setLocalHms(record.endedAt, editTimes.end.h, editTimes.end.m, editTimes.end.s);
+  return Math.floor((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000);
 }
 
 function persist() {
@@ -266,6 +307,240 @@ function closeEditProjectModal() {
   editingProjectName = null;
 }
 
+const TIME_WHEELS = [
+  { key: "start", unit: "h", max: 24, wheel: "startHourWheel" },
+  { key: "start", unit: "m", max: 60, wheel: "startMinuteWheel" },
+  { key: "start", unit: "s", max: 60, wheel: "startSecondWheel" },
+  { key: "end", unit: "h", max: 24, wheel: "endHourWheel" },
+  { key: "end", unit: "m", max: 60, wheel: "endMinuteWheel" },
+  { key: "end", unit: "s", max: 60, wheel: "endSecondWheel" },
+];
+
+function wheelEl(id) {
+  return document.getElementById(id);
+}
+
+function highlightWheel(viewport, value) {
+  viewport.querySelectorAll(".time-wheel-item").forEach((el) => {
+    const n = Number(el.dataset.n);
+    el.classList.toggle("is-active", n === value);
+    el.classList.toggle("is-near", Math.abs(n - value) === 1);
+  });
+}
+
+function paintWheel(viewport, value, extra = 0) {
+  const track = viewport.querySelector(".time-wheel-track");
+  if (!track) return;
+  const max = Number(viewport.dataset.max) || 60;
+  const center = (viewport.clientHeight || 118) / 2 - WHEEL_ITEM / 2;
+  const y = center - value * WHEEL_ITEM + extra;
+  track.style.transform = `translateY(${y}px)`;
+  highlightWheel(viewport, clampUnit(Math.round(value), max));
+}
+
+function fillWheel(viewport, maxExclusive, value) {
+  viewport.innerHTML = "";
+  viewport.dataset.max = String(maxExclusive);
+  const track = document.createElement("div");
+  track.className = "time-wheel-track";
+  for (let i = 0; i < maxExclusive; i += 1) {
+    const item = document.createElement("div");
+    item.className = "time-wheel-item";
+    item.textContent = pad2(i);
+    item.dataset.n = String(i);
+    track.appendChild(item);
+  }
+  const edit = document.createElement("input");
+  edit.className = "time-wheel-edit";
+  edit.type = "text";
+  edit.inputMode = "numeric";
+  edit.maxLength = 2;
+  edit.hidden = true;
+  viewport.appendChild(track);
+  viewport.appendChild(edit);
+  paintWheel(viewport, value, 0);
+}
+
+function commitWheelValue(cfg, value) {
+  const next = clampUnit(value, cfg.max);
+  editTimes[cfg.key][cfg.unit] = next;
+  const viewport = wheelEl(cfg.wheel);
+  if (viewport) paintWheel(viewport, next, 0);
+  updateEditDuration();
+  return next;
+}
+
+function beginWheelType(cfg) {
+  const viewport = wheelEl(cfg.wheel);
+  if (!viewport) return;
+  const edit = viewport.querySelector(".time-wheel-edit");
+  if (!edit) return;
+  edit.hidden = false;
+  edit.value = pad2(editTimes[cfg.key][cfg.unit]);
+  edit.focus();
+  edit.select();
+}
+
+function endWheelType(cfg, raw) {
+  const viewport = wheelEl(cfg.wheel);
+  const edit = viewport?.querySelector(".time-wheel-edit");
+  if (edit) {
+    edit.hidden = true;
+    edit.value = "";
+  }
+  if (raw === null || raw === undefined || String(raw).trim() === "") return;
+  commitWheelValue(cfg, raw);
+}
+
+function bindTimeWheels() {
+  for (const cfg of TIME_WHEELS) {
+    const viewport = wheelEl(cfg.wheel);
+    if (!viewport || viewport.dataset.bound) continue;
+    viewport.dataset.bound = "1";
+
+    let pointerId = null;
+    let startY = 0;
+    let startValue = 0;
+    let moved = false;
+
+    viewport.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      const edit = viewport.querySelector(".time-wheel-edit");
+      if (edit && !edit.hidden) return;
+      pointerId = e.pointerId;
+      startY = e.clientY;
+      startValue = editTimes[cfg.key][cfg.unit];
+      moved = false;
+      viewport.setPointerCapture(e.pointerId);
+    });
+
+    viewport.addEventListener("pointermove", (e) => {
+      if (pointerId !== e.pointerId) return;
+      const delta = e.clientY - startY;
+      if (Math.abs(delta) > 3) moved = true;
+      const preview = Math.max(0, Math.min(cfg.max - 1, startValue - delta / WHEEL_ITEM));
+      paintWheel(viewport, preview);
+    });
+
+    const finishPointer = (e) => {
+      if (pointerId !== e.pointerId) return;
+      viewport.releasePointerCapture?.(e.pointerId);
+      pointerId = null;
+      if (!moved) {
+        beginWheelType(cfg);
+        return;
+      }
+      const delta = e.clientY - startY;
+      commitWheelValue(cfg, startValue - delta / WHEEL_ITEM);
+    };
+
+    viewport.addEventListener("pointerup", finishPointer);
+    viewport.addEventListener("pointercancel", finishPointer);
+
+    viewport.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const dir = e.deltaY > 0 ? 1 : -1;
+      commitWheelValue(cfg, editTimes[cfg.key][cfg.unit] + dir);
+    }, { passive: false });
+  }
+}
+
+function bindWheelEditors() {
+  for (const cfg of TIME_WHEELS) {
+    const viewport = wheelEl(cfg.wheel);
+    const edit = viewport?.querySelector(".time-wheel-edit");
+    if (!edit || edit.dataset.bound) continue;
+    edit.dataset.bound = "1";
+    edit.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        endWheelType(cfg, edit.value);
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        endWheelType(cfg, null);
+      }
+    });
+    edit.addEventListener("blur", () => endWheelType(cfg, edit.value));
+  }
+}
+
+function syncWheelsFromRecord() {
+  bindTimeWheels();
+  for (const cfg of TIME_WHEELS) {
+    fillWheel(wheelEl(cfg.wheel), cfg.max, editTimes[cfg.key][cfg.unit]);
+  }
+  bindWheelEditors();
+}
+
+function updateEditDuration() {
+  const record = state.records.find((r) => r.id === editingRecordId);
+  const seconds = durationFromEditTimes(record);
+  if (!editRecordDuration) return;
+  if (seconds <= 0) {
+    editRecordDuration.textContent = "Duration · invalid (end must be after start)";
+    editRecordDuration.style.color = "var(--danger)";
+  } else {
+    editRecordDuration.textContent = `Duration · ${formatTime(seconds)}  ·  ${seconds}s`;
+    editRecordDuration.style.color = "var(--green)";
+  }
+}
+
+function openEditRecordModal(id) {
+  const record = state.records.find((r) => r.id === id);
+  if (!record) return;
+  editingRecordId = id;
+  editTimes = {
+    start: getLocalHms(record.startedAt),
+    end: getLocalHms(record.endedAt),
+  };
+  editRecordSummary.textContent = `${record.project} · ${formatDateOnly(record.endedAt)}`;
+  editRecordNote.value = record.description || "";
+  editRecordError.hidden = true;
+  editRecordError.textContent = "";
+  editRecordModal.hidden = false;
+  requestAnimationFrame(() => {
+    syncWheelsFromRecord();
+    updateEditDuration();
+  });
+}
+
+function closeEditRecordModal() {
+  for (const cfg of TIME_WHEELS) {
+    const edit = wheelEl(cfg.wheel)?.querySelector(".time-wheel-edit");
+    if (edit) {
+      edit.hidden = true;
+      edit.value = "";
+    }
+  }
+  editRecordModal.hidden = true;
+  editingRecordId = null;
+  editTimes = { start: { h: 0, m: 0, s: 0 }, end: { h: 0, m: 0, s: 0 } };
+}
+
+function saveRecordEdit() {
+  const record = state.records.find((r) => r.id === editingRecordId);
+  if (!record) return;
+
+  const startIso = setLocalHms(record.startedAt, editTimes.start.h, editTimes.start.m, editTimes.start.s);
+  const endIso = setLocalHms(record.endedAt, editTimes.end.h, editTimes.end.m, editTimes.end.s);
+  const seconds = Math.floor((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000);
+
+  if (seconds <= 0) {
+    editRecordError.textContent = "End time must be after start time.";
+    editRecordError.hidden = false;
+    return;
+  }
+
+  record.startedAt = startIso;
+  record.endedAt = endIso;
+  record.seconds = seconds;
+  record.description = String(editRecordNote.value || "").trim();
+  closeEditRecordModal();
+  render();
+  persist();
+}
+
 function saveProjectEdit() {
   if (!editingProjectName) return;
 
@@ -380,9 +655,12 @@ function renderHistory() {
         </div>
       </td>
       <td class="time-cell">${formatTime(record.seconds)}</td>
-      <td class="note-cell" title="${escapeHtml(record.description || "")}">${note}</td>
+      <td class="note-cell"><span class="note-text" title="${escapeHtml(record.description || "")}">${note}</span></td>
       <td class="actions-cell">
-        <button type="button" class="row-delete" data-delete-id="${escapeHtml(record.id)}" title="Delete record" aria-label="Delete record">×</button>
+        <div class="row-actions">
+          <button type="button" class="row-edit" data-edit-id="${escapeHtml(record.id)}" title="Edit record" aria-label="Edit record">✎</button>
+          <button type="button" class="row-delete" data-delete-id="${escapeHtml(record.id)}" title="Delete record" aria-label="Delete record">×</button>
+        </div>
       </td>
     `;
     recordsBody.appendChild(tr);
@@ -683,10 +961,9 @@ function recordsToTsv(records) {
 async function copySelectedRecords() {
   if (selectedIds.size === 0) return;
 
-  const order = new Map(sortedHistoryIds.map((id, index) => [id, index]));
   const records = state.records
     .filter((r) => selectedIds.has(r.id))
-    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    .sort((a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime());
 
   const tsv = recordsToTsv(records);
   try {
@@ -723,6 +1000,8 @@ cancelAddBtn.addEventListener("click", () => showAddForm(false));
 deleteProjectBtn.addEventListener("click", () => deleteSelectedProject());
 editProjectCancel.addEventListener("click", () => closeEditProjectModal());
 editProjectSave.addEventListener("click", () => saveProjectEdit());
+editRecordCancel.addEventListener("click", () => closeEditRecordModal());
+editRecordSave.addEventListener("click", () => saveRecordEdit());
 editProjectName.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -760,8 +1039,8 @@ noteInput.addEventListener("keydown", (e) => {
 
 recordsBody.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
-  const deleteBtn = e.target.closest("[data-delete-id]");
-  if (deleteBtn) return;
+  const actionBtn = e.target.closest("[data-delete-id], [data-edit-id]");
+  if (actionBtn) return;
 
   const row = e.target.closest("tr[data-id]");
   if (!row) return;
@@ -811,6 +1090,13 @@ window.addEventListener("mouseup", () => {
 });
 
 recordsBody.addEventListener("click", (e) => {
+  const editBtn = e.target.closest("[data-edit-id]");
+  if (editBtn) {
+    e.stopPropagation();
+    openEditRecordModal(editBtn.dataset.editId);
+    return;
+  }
+
   const deleteBtn = e.target.closest("[data-delete-id]");
   if (deleteBtn) {
     e.stopPropagation();
@@ -849,7 +1135,9 @@ resetSessionBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("beforeunload", () => {
-  if (state.isRunning || state.sessionStartedAt) {
+  if (pausePromptOpen && state.sessionStartedAt) {
+    commitCurrentSession(noteInput.value);
+  } else if (state.isRunning || state.sessionStartedAt) {
     commitCurrentSession("");
   }
   persist();
