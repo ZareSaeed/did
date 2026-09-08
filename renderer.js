@@ -64,6 +64,8 @@ const editRecordError = document.getElementById("editRecordError");
 const editRecordDuration = document.getElementById("editRecordDuration");
 const editRecordCancel = document.getElementById("editRecordCancel");
 const editRecordSave = document.getElementById("editRecordSave");
+const editRecordProject = document.getElementById("editRecordProject");
+const editRecordProjectRow = document.getElementById("editRecordProjectRow");
 
 const DEFAULT_REPO_URL = "https://github.com/ZareSaeed/did";
 let repoUrl = DEFAULT_REPO_URL;
@@ -486,6 +488,27 @@ function updateEditDuration() {
   }
 }
 
+function fillEditRecordProjects(selected) {
+  const names = [...state.projects];
+  if (selected && !names.includes(selected)) names.unshift(selected);
+  editRecordProject.innerHTML = "";
+  for (const project of names) {
+    const option = document.createElement("option");
+    option.value = project;
+    option.textContent = project;
+    if (project === selected) option.selected = true;
+    editRecordProject.appendChild(option);
+  }
+  paintEditRecordProject(selected);
+}
+
+function paintEditRecordProject(name) {
+  const color = projectColor(name);
+  if (editRecordProjectRow) {
+    editRecordProjectRow.style.setProperty("--project-color", color);
+  }
+}
+
 function openEditRecordModal(id) {
   const record = state.records.find((r) => r.id === id);
   if (!record) return;
@@ -494,7 +517,8 @@ function openEditRecordModal(id) {
     start: getLocalHms(record.startedAt),
     end: getLocalHms(record.endedAt),
   };
-  editRecordSummary.textContent = `${record.project} · ${formatDateOnly(record.endedAt)}`;
+  editRecordSummary.textContent = formatDateOnly(record.endedAt);
+  fillEditRecordProjects(record.project);
   editRecordNote.value = record.description || "";
   editRecordError.hidden = true;
   editRecordError.textContent = "";
@@ -532,9 +556,17 @@ function saveRecordEdit() {
     return;
   }
 
+  const nextProject = editRecordProject.value.trim();
+  if (!nextProject) {
+    editRecordError.textContent = "Choose a project.";
+    editRecordError.hidden = false;
+    return;
+  }
+
   record.startedAt = startIso;
   record.endedAt = endIso;
   record.seconds = seconds;
+  record.project = nextProject;
   record.description = String(editRecordNote.value || "").trim();
   closeEditRecordModal();
   render();
@@ -1002,6 +1034,9 @@ editProjectCancel.addEventListener("click", () => closeEditProjectModal());
 editProjectSave.addEventListener("click", () => saveProjectEdit());
 editRecordCancel.addEventListener("click", () => closeEditRecordModal());
 editRecordSave.addEventListener("click", () => saveRecordEdit());
+editRecordProject.addEventListener("change", (e) => {
+  paintEditRecordProject(e.target.value);
+});
 editProjectName.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();

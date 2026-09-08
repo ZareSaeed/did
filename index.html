@@ -19,7 +19,7 @@
         <div class="brand">
           <div class="brand-row">
             <p class="brand-name">did</p>
-            <span class="version-badge" id="appVersion">v1.1.2</span>
+            <span class="version-badge" id="appVersion">v1.1.3</span>
             <button type="button" id="githubBtn" class="github-btn" title="Open on GitHub" aria-label="Open GitHub repository">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
                 <path
@@ -161,6 +161,11 @@
       <div class="modal-panel modal-panel-wide" role="dialog" aria-modal="true" aria-labelledby="editRecordTitle">
         <p class="modal-title" id="editRecordTitle">Edit session</p>
         <p class="modal-body" id="editRecordSummary"></p>
+        <label class="field-label" for="editRecordProject">Project</label>
+        <div class="edit-record-project" id="editRecordProjectRow">
+          <span class="color-dot" id="editRecordProjectDot" aria-hidden="true"></span>
+          <select id="editRecordProject" class="project-select" aria-label="Session project"></select>
+        </div>
         <p class="field-label">Times</p>
         <div class="time-wheels">
           <div class="time-picker" data-which="start">

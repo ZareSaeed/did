@@ -50,9 +50,9 @@ Get the latest installers from **[Releases](https://github.com/ZareSaeed/did/rel
 
 | Platform | 📦 Packages |
 |----------|-------------|
-| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-win-x64-portable.exe) |
-| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-mac-x64.dmg) |
-| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.2/did-1.1.2-linux-amd64.deb) |
+| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-win-x64-portable.exe) |
+| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-mac-x64.dmg) |
+| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-linux-amd64.deb) |
 
 ### 🔄 Updating an existing install
 
@@ -105,7 +105,7 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 
 ### 📋 Session log
 - Full history kept forever (Timer ↔ Log tabs)
-- Edit session times and notes (notes up to 4000 characters)
+- Edit session project, times, and notes (notes up to 4000 characters)
 - Delete individual rows (with confirmation)
 - Click or drag to select · **Copy** as spreadsheet-ready TSV (oldest first)
 - **Open CSV** — live export next to your app data
