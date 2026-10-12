@@ -19,7 +19,7 @@
         <div class="brand">
           <div class="brand-row">
             <p class="brand-name">did</p>
-            <span class="version-badge" id="appVersion">v1.1.3</span>
+            <span class="version-badge" id="appVersion">v1.2.0</span>
             <button type="button" id="githubBtn" class="github-btn" title="Open on GitHub" aria-label="Open GitHub repository">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
                 <path
@@ -166,32 +166,21 @@
           <span class="color-dot" id="editRecordProjectDot" aria-hidden="true"></span>
           <select id="editRecordProject" class="project-select" aria-label="Session project"></select>
         </div>
-        <p class="field-label">Times</p>
-        <div class="time-wheels">
-          <div class="time-picker" data-which="start">
-            <p class="time-picker-label">Start</p>
-            <div class="time-picker-row">
-              <span class="time-wheel-highlight" aria-hidden="true"></span>
-              <div class="time-wheel" id="startHourWheel" data-max="24" aria-label="Start hour"></div>
-              <span class="time-colon">:</span>
-              <div class="time-wheel" id="startMinuteWheel" data-max="60" aria-label="Start minute"></div>
-              <span class="time-colon">:</span>
-              <div class="time-wheel" id="startSecondWheel" data-max="60" aria-label="Start second"></div>
-            </div>
-          </div>
-          <div class="time-picker" data-which="end">
-            <p class="time-picker-label">End</p>
-            <div class="time-picker-row">
-              <span class="time-wheel-highlight" aria-hidden="true"></span>
-              <div class="time-wheel" id="endHourWheel" data-max="24" aria-label="End hour"></div>
-              <span class="time-colon">:</span>
-              <div class="time-wheel" id="endMinuteWheel" data-max="60" aria-label="End minute"></div>
-              <span class="time-colon">:</span>
-              <div class="time-wheel" id="endSecondWheel" data-max="60" aria-label="End second"></div>
-            </div>
-          </div>
+        <div class="timeline-heading">
+          <p class="field-label">Session timeline</p>
+          <button type="button" id="addPauseBtn" class="timeline-add">+ Add pause</button>
         </div>
-        <p class="duration-live" id="editRecordDuration">Duration · 00:00:00</p>
+        <p class="timeline-legacy" id="timelineLegacy" hidden>Pause position is inferred for this older record. Its saved work total stays unchanged unless you edit the timeline.</p>
+        <div class="timeline-card">
+          <div class="timeline-track" id="timelineTrack" aria-label="Session timeline"></div>
+          <div class="timeline-axis"><span id="timelineStartLabel"></span><span id="timelineEndLabel"></span></div>
+          <div class="timeline-fields">
+            <label>Started<input id="editRecordStart" type="datetime-local" step="1" /></label>
+            <label>Finished<input id="editRecordEnd" type="datetime-local" step="1" /></label>
+          </div>
+          <div class="pause-list" id="pauseList"></div>
+        </div>
+        <p class="duration-live" id="editRecordDuration">Worked · 00:00:00</p>
         <label class="field-label" for="editRecordNote">Note</label>
         <textarea
           id="editRecordNote"
@@ -232,6 +221,7 @@
     </div>
 
     <script src="space-bg.js"></script>
+    <script src="timeline.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

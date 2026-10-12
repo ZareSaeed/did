@@ -66,6 +66,14 @@ const editRecordCancel = document.getElementById("editRecordCancel");
 const editRecordSave = document.getElementById("editRecordSave");
 const editRecordProject = document.getElementById("editRecordProject");
 const editRecordProjectRow = document.getElementById("editRecordProjectRow");
+const timelineTrack = document.getElementById("timelineTrack");
+const timelineStartLabel = document.getElementById("timelineStartLabel");
+const timelineEndLabel = document.getElementById("timelineEndLabel");
+const timelineLegacy = document.getElementById("timelineLegacy");
+const editRecordStart = document.getElementById("editRecordStart");
+const editRecordEnd = document.getElementById("editRecordEnd");
+const pauseList = document.getElementById("pauseList");
+const addPauseBtn = document.getElementById("addPauseBtn");
 
 const DEFAULT_REPO_URL = "https://github.com/ZareSaeed/did";
 let repoUrl = DEFAULT_REPO_URL;
@@ -81,6 +89,7 @@ let state = {
   isRunning: false,
   lastTick: null,
   lastHeartbeat: null,
+  sessionSegments: [],
 };
 
 let tickInterval = null;
@@ -98,10 +107,16 @@ let suppressClick = false;
 let editingProjectName = null;
 let editSelectedColor = COLOR_PALETTE[0];
 let editingRecordId = null;
+let storageWritable = true;
+let storageError = null;
+let lastCheckpointPersistAt = 0;
 let editTimes = {
   start: { h: 0, m: 0, s: 0 },
   end: { h: 0, m: 0, s: 0 },
 };
+let editTimeline = null;
+let editTimelineDirty = false;
+let activeTimelineDrag = null;
 const WHEEL_ITEM = 38;
 
 function formatTime(totalSeconds) {
@@ -160,11 +175,18 @@ function durationFromEditTimes(record) {
   return Math.floor((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000);
 }
 
-function persist() {
+function persist(reason = "state-update") {
+  if (!storageWritable) return Promise.resolve(false);
   if (window.did?.saveData) {
-    window.did.saveData(state);
+    return window.did.saveData(state, reason).catch((error) => {
+      storageWritable = false;
+      storageError = error?.message || "Data could not be saved.";
+      render();
+      return false;
+    });
   } else {
     localStorage.setItem("did-data", JSON.stringify(state));
+    return Promise.resolve(true);
   }
 }
 
@@ -206,17 +228,43 @@ function catchUpRunningTime() {
   state.lastTick = now;
 }
 
+function secondIso(value = Date.now()) {
+  return new Date(Math.floor(new Date(value).getTime() / 1000) * 1000).toISOString();
+}
+
+function openWorkSegment(at = Date.now()) {
+  if (!Array.isArray(state.sessionSegments)) state.sessionSegments = [];
+  const last = state.sessionSegments[state.sessionSegments.length - 1];
+  if (last && !last.endedAt) return;
+  state.sessionSegments.push({ startedAt: secondIso(at), endedAt: null });
+}
+
+function closeWorkSegment(at = Date.now()) {
+  if (!Array.isArray(state.sessionSegments)) return;
+  const last = state.sessionSegments[state.sessionSegments.length - 1];
+  if (!last || last.endedAt) return;
+  const endMs = Math.max(new Date(last.startedAt).getTime() + 1000, new Date(secondIso(at)).getTime());
+  last.endedAt = new Date(endMs).toISOString();
+}
+
 function clearSession() {
   state.sessionSeconds = 0;
   state.sessionStartedAt = null;
   state.lastTick = null;
   state.lastHeartbeat = null;
   state.isRunning = false;
+  state.sessionSegments = [];
 }
 
 function buildRecordFromSession(description = "", options = {}) {
   catchUpRunningTime();
-  const seconds = Math.floor(state.sessionSeconds);
+  if (state.isRunning) closeWorkSegment(options.endedAt || Date.now());
+  const completeSegments = Array.isArray(state.sessionSegments)
+    ? state.sessionSegments.filter((segment) => segment.startedAt && segment.endedAt).map((segment) => ({ ...segment }))
+    : [];
+  const seconds = completeSegments.length
+    ? window.didTimeline.sumSegments(completeSegments)
+    : Math.floor(state.sessionSeconds);
   if (seconds <= 0 || !state.sessionStartedAt) {
     clearSession();
     return null;
@@ -226,7 +274,7 @@ function buildRecordFromSession(description = "", options = {}) {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     project: state.selectedProject,
     startedAt: state.sessionStartedAt,
-    endedAt: options.endedAt || new Date().toISOString(),
+    endedAt: options.endedAt || completeSegments.at(-1)?.endedAt || new Date().toISOString(),
     seconds,
     description: String(description || "").trim(),
   };
@@ -573,6 +621,196 @@ function saveRecordEdit() {
   persist();
 }
 
+// Detailed timeline editor. Older records deliberately remain untouched unless
+// the user changes a timeline control, so changing only a note can never add
+// historical pause time back into the duration.
+function localDateTimeValue(ms) {
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(ms - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 19);
+}
+
+function localDateTimeMs(value) {
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function shortTimelineTime(ms) {
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function markTimelineDirty() {
+  editTimelineDirty = true;
+  if (editTimeline) editTimeline.inferred = false;
+}
+
+function timelineError(message = "") {
+  editRecordError.textContent = message;
+  editRecordError.hidden = !message;
+}
+
+function renderPauseList() {
+  pauseList.innerHTML = "";
+  editTimeline.pauses.forEach((pause, index) => {
+    const row = document.createElement("div");
+    row.className = "pause-row";
+    row.innerHTML = `
+      <span class="pause-dot" aria-hidden="true"></span>
+      <label>Pause ${index + 1}<input type="datetime-local" step="1" data-pause-index="${index}" data-pause-edge="start" value="${localDateTimeValue(pause.startMs)}"></label>
+      <label>Resume<input type="datetime-local" step="1" data-pause-index="${index}" data-pause-edge="end" value="${localDateTimeValue(pause.endMs)}"></label>
+      <button type="button" class="pause-remove" data-remove-pause="${index}" title="Remove pause" aria-label="Remove pause ${index + 1}">×</button>`;
+    pauseList.appendChild(row);
+  });
+  if (!editTimeline.pauses.length) {
+    const empty = document.createElement("p");
+    empty.className = "pause-empty";
+    empty.textContent = "No pauses in this session";
+    pauseList.appendChild(empty);
+  }
+}
+
+function renderTimelineTrack() {
+  const span = editTimeline.endMs - editTimeline.startMs;
+  timelineTrack.innerHTML = "";
+  if (!Number.isFinite(span) || span <= 0) {
+    timelineStartLabel.textContent = "—";
+    timelineEndLabel.textContent = "—";
+    return;
+  }
+  for (let index = 0; index <= 8; index += 1) {
+    const tick = document.createElement("span");
+    tick.className = "timeline-tick";
+    tick.style.left = `${(index / 8) * 100}%`;
+    timelineTrack.appendChild(tick);
+  }
+  editTimeline.pauses.forEach((pause, index) => {
+    const block = document.createElement("span");
+    block.className = "timeline-pause";
+    block.style.left = `${((pause.startMs - editTimeline.startMs) / span) * 100}%`;
+    block.style.width = `${((pause.endMs - pause.startMs) / span) * 100}%`;
+    block.title = `Pause ${formatTime((pause.endMs - pause.startMs) / 1000)}`;
+    timelineTrack.appendChild(block);
+    for (const edge of ["start", "end"]) {
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = `timeline-handle pause-${edge}`;
+      handle.dataset.pauseIndex = String(index);
+      handle.dataset.pauseEdge = edge;
+      handle.style.left = `${(((edge === "start" ? pause.startMs : pause.endMs) - editTimeline.startMs) / span) * 100}%`;
+      handle.setAttribute("aria-label", `${edge === "start" ? "Start" : "End"} of pause ${index + 1}`);
+      timelineTrack.appendChild(handle);
+    }
+  });
+  timelineStartLabel.textContent = shortTimelineTime(editTimeline.startMs);
+  timelineEndLabel.textContent = shortTimelineTime(editTimeline.endMs);
+}
+
+function renderTimelineEditor() {
+  if (!editTimeline) return;
+  editRecordStart.value = localDateTimeValue(editTimeline.startMs);
+  editRecordEnd.value = localDateTimeValue(editTimeline.endMs);
+  timelineLegacy.hidden = !editTimeline.inferred;
+  try {
+    const segments = window.didTimeline.segmentsFromTimeline(
+      editTimeline.startMs,
+      editTimeline.endMs,
+      editTimeline.pauses
+    );
+    const worked = window.didTimeline.sumSegments(segments);
+    const span = Math.floor((editTimeline.endMs - editTimeline.startMs) / 1000);
+    const paused = Math.max(0, span - worked);
+    editRecordDuration.textContent = `Worked ${formatTime(worked)}  ·  Paused ${formatTime(paused)}  ·  Span ${formatTime(span)}`;
+    editRecordDuration.style.color = "var(--green)";
+    timelineError();
+  } catch (error) {
+    editRecordDuration.textContent = "Timeline is invalid";
+    editRecordDuration.style.color = "var(--danger)";
+    timelineError(error.message);
+  }
+  renderTimelineTrack();
+  renderPauseList();
+}
+
+function openEditRecordModal(id) {
+  const record = state.records.find((item) => item.id === id);
+  if (!record) return;
+  editingRecordId = id;
+  editTimeline = window.didTimeline.timelineFromRecord(record);
+  editTimelineDirty = false;
+  editRecordSummary.textContent = formatDateOnly(record.endedAt);
+  fillEditRecordProjects(record.project);
+  editRecordNote.value = record.description || "";
+  timelineError();
+  editRecordModal.hidden = false;
+  requestAnimationFrame(renderTimelineEditor);
+}
+
+function closeEditRecordModal() {
+  editRecordModal.hidden = true;
+  editingRecordId = null;
+  editTimeline = null;
+  editTimelineDirty = false;
+}
+
+function saveRecordEdit() {
+  const record = state.records.find((item) => item.id === editingRecordId);
+  if (!record || !editTimeline) return;
+  const nextProject = editRecordProject.value.trim();
+  if (!nextProject) {
+    timelineError("Choose a project.");
+    return;
+  }
+  if (editTimelineDirty) {
+    try {
+      const segments = window.didTimeline.segmentsFromTimeline(
+        editTimeline.startMs,
+        editTimeline.endMs,
+        editTimeline.pauses
+      );
+      record.segments = segments;
+      record.startedAt = segments[0].startedAt;
+      record.endedAt = segments[segments.length - 1].endedAt;
+      record.seconds = window.didTimeline.sumSegments(segments);
+    } catch (error) {
+      timelineError(error.message);
+      return;
+    }
+  }
+  record.project = nextProject;
+  record.description = String(editRecordNote.value || "").trim();
+  closeEditRecordModal();
+  render();
+  persist("user-edit-record");
+}
+
+function addTimelinePause() {
+  if (!editTimeline) return;
+  let segments;
+  try {
+    segments = window.didTimeline.segmentsFromTimeline(editTimeline.startMs, editTimeline.endMs, editTimeline.pauses);
+  } catch (error) {
+    timelineError(error.message);
+    return;
+  }
+  const largest = segments
+    .map((segment) => ({ startMs: new Date(segment.startedAt).getTime(), endMs: new Date(segment.endedAt).getTime() }))
+    .sort((a, b) => (b.endMs - b.startMs) - (a.endMs - a.startMs))[0];
+  const length = largest.endMs - largest.startMs;
+  if (length < 3000) {
+    timelineError("There is not enough worked time to add a pause.");
+    return;
+  }
+  const pauseLength = Math.min(5 * 60000, Math.max(1000, Math.floor(length / 5)));
+  const startMs = Math.floor((largest.startMs + (length - pauseLength) / 2) / 1000) * 1000;
+  editTimeline.pauses.push({ startMs, endMs: startMs + pauseLength });
+  editTimeline.pauses.sort((a, b) => a.startMs - b.startMs);
+  markTimelineDirty();
+  renderTimelineEditor();
+}
+
 function saveProjectEdit() {
   if (!editingProjectName) return;
 
@@ -728,13 +966,22 @@ function render() {
   timerDisplay.textContent = formatTime(state.sessionSeconds);
   projectTotal.textContent = `Total · ${formatTime(getProjectTotal(state.selectedProject))}`;
 
-  if (state.isRunning) {
+  if (storageError) {
+    statusLabel.textContent = "Storage error";
+    statusLabel.classList.remove("running");
+    toggleBtn.classList.remove("is-running");
+    toggleBtn.disabled = true;
+    toggleBtn.setAttribute("aria-pressed", "false");
+    toggleLabel.textContent = "Unavailable";
+  } else if (state.isRunning) {
+    toggleBtn.disabled = false;
     statusLabel.textContent = "Tracking";
     statusLabel.classList.add("running");
     toggleBtn.classList.add("is-running");
     toggleBtn.setAttribute("aria-pressed", "true");
     toggleLabel.textContent = "Pause";
   } else {
+    toggleBtn.disabled = false;
     statusLabel.textContent = pausePromptOpen
       ? "Saving"
       : state.sessionSeconds > 0
@@ -760,7 +1007,10 @@ function startTicking() {
     state.lastTick = now;
     state.lastHeartbeat = new Date(now).toISOString();
     render();
-    persist();
+    if (now - lastCheckpointPersistAt >= 10000) {
+      lastCheckpointPersistAt = now;
+      persist("timer-checkpoint");
+    }
   }, 250);
 }
 
@@ -796,6 +1046,7 @@ async function pauseWithNote() {
   if (!state.isRunning) return;
 
   catchUpRunningTime();
+  closeWorkSegment();
   stopTicking();
   state.isRunning = false;
   state.lastTick = null;
@@ -804,8 +1055,7 @@ async function pauseWithNote() {
 
   const seconds = Math.floor(state.sessionSeconds);
   if (seconds <= 0 || !state.sessionStartedAt) {
-    state.sessionSeconds = 0;
-    state.sessionStartedAt = null;
+    clearSession();
     render();
     persist();
     return;
@@ -817,6 +1067,7 @@ async function pauseWithNote() {
 
   if (result === null) {
     // Keep timing
+    openWorkSegment();
     state.isRunning = true;
     state.lastTick = Date.now();
     state.lastHeartbeat = new Date().toISOString();
@@ -838,8 +1089,10 @@ async function setRunning(running) {
     if (running) {
     if (!state.sessionStartedAt) {
       state.sessionSeconds = 0;
-      state.sessionStartedAt = new Date().toISOString();
+      state.sessionStartedAt = secondIso();
+      state.sessionSegments = [];
     }
+    openWorkSegment();
     state.isRunning = true;
     state.lastTick = Date.now();
     state.lastHeartbeat = new Date().toISOString();
@@ -863,6 +1116,7 @@ async function switchProject(nextProject) {
   }
   state.selectedProject = nextProject;
   state.sessionSeconds = 0;
+  state.sessionSegments = [];
   ensureProjectColor(nextProject);
   render();
   persist();
@@ -892,6 +1146,7 @@ function addProject(name) {
   state.selectedProject = cleaned;
   state.sessionSeconds = 0;
   state.sessionStartedAt = null;
+  state.sessionSegments = [];
   renderProjects();
   render();
   persist();
@@ -935,6 +1190,7 @@ async function deleteSelectedProject() {
   state.selectedProject = state.projects[0];
   state.sessionSeconds = 0;
   state.sessionStartedAt = null;
+  state.sessionSegments = [];
   renderProjects();
   render();
   persist();
@@ -953,7 +1209,7 @@ async function deleteRecord(id) {
   state.records = state.records.filter((r) => r.id !== id);
   selectedIds.delete(id);
   render();
-  persist();
+  persist("user-delete-record");
 }
 
 function paintSelection() {
@@ -1037,6 +1293,71 @@ editRecordSave.addEventListener("click", () => saveRecordEdit());
 editRecordProject.addEventListener("change", (e) => {
   paintEditRecordProject(e.target.value);
 });
+addPauseBtn.addEventListener("click", addTimelinePause);
+editRecordStart.addEventListener("change", () => {
+  if (!editTimeline) return;
+  editTimeline.startMs = localDateTimeMs(editRecordStart.value);
+  markTimelineDirty();
+  renderTimelineEditor();
+});
+editRecordEnd.addEventListener("change", () => {
+  if (!editTimeline) return;
+  editTimeline.endMs = localDateTimeMs(editRecordEnd.value);
+  markTimelineDirty();
+  renderTimelineEditor();
+});
+pauseList.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-pause-index][data-pause-edge]");
+  if (!input || !editTimeline) return;
+  const pause = editTimeline.pauses[Number(input.dataset.pauseIndex)];
+  if (!pause) return;
+  pause[`${input.dataset.pauseEdge}Ms`] = localDateTimeMs(input.value);
+  editTimeline.pauses.sort((a, b) => a.startMs - b.startMs);
+  markTimelineDirty();
+  renderTimelineEditor();
+});
+pauseList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-pause]");
+  if (!button || !editTimeline) return;
+  editTimeline.pauses.splice(Number(button.dataset.removePause), 1);
+  markTimelineDirty();
+  renderTimelineEditor();
+});
+timelineTrack.addEventListener("pointerdown", (event) => {
+  const handle = event.target.closest("[data-pause-index][data-pause-edge]");
+  if (!handle || !editTimeline) return;
+  event.preventDefault();
+  activeTimelineDrag = {
+    index: Number(handle.dataset.pauseIndex),
+    edge: handle.dataset.pauseEdge,
+    rect: timelineTrack.getBoundingClientRect(),
+  };
+
+  if (completeSegments.length) record.segments = completeSegments;
+});
+window.addEventListener("pointermove", (event) => {
+  if (!activeTimelineDrag || !editTimeline) return;
+  const { index, edge, rect } = activeTimelineDrag;
+  const pause = editTimeline.pauses[index];
+  if (!pause) return;
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  let ms = editTimeline.startMs + ratio * (editTimeline.endMs - editTimeline.startMs);
+  ms = Math.round(ms / 60000) * 60000;
+  const previousEnd = index > 0 ? editTimeline.pauses[index - 1].endMs : editTimeline.startMs;
+  const nextStart = index < editTimeline.pauses.length - 1
+    ? editTimeline.pauses[index + 1].startMs
+    : editTimeline.endMs;
+  if (edge === "start") {
+    pause.startMs = Math.max(previousEnd + 1000, Math.min(pause.endMs - 1000, ms));
+  } else {
+    pause.endMs = Math.max(pause.startMs + 1000, Math.min(nextStart - 1000, ms));
+  }
+  markTimelineDirty();
+  renderTimelineEditor();
+});
+window.addEventListener("pointerup", () => {
+  activeTimelineDrag = null;
+});
 editProjectName.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -1051,7 +1372,8 @@ noteCancel.addEventListener("click", () => closeNote(null));
 noteSave.addEventListener("click", () => closeNote(noteInput.value));
 copySelectedBtn.addEventListener("click", () => copySelectedRecords());
 openCsvBtn.addEventListener("click", async () => {
-  persist();
+  const saved = await persist("csv-export");
+  if (saved === false) return;
   if (window.did?.openCsv) {
     await window.did.openCsv();
   }
@@ -1165,17 +1487,28 @@ resetSessionBtn.addEventListener("click", () => {
   state.sessionSeconds = 0;
   state.sessionStartedAt = null;
   state.lastTick = null;
+  state.lastHeartbeat = null;
+  state.sessionSegments = [];
   render();
   persist();
 });
 
-window.addEventListener("beforeunload", () => {
+window.addEventListener("beforeunload", (event) => {
   if (pausePromptOpen && state.sessionStartedAt) {
     commitCurrentSession(noteInput.value);
   } else if (state.isRunning || state.sessionStartedAt) {
     commitCurrentSession("");
   }
-  persist();
+  if (storageWritable && window.did?.saveDataSync) {
+    const result = window.did.saveDataSync(state, "window-close");
+    if (result?.ok === false) {
+      event.preventDefault();
+      storageError = result.error || "Data could not be saved before closing.";
+      render();
+    }
+  } else {
+    persist("window-close");
+  }
 });
 
 async function init() {
@@ -1189,7 +1522,13 @@ async function init() {
 
   let loaded = null;
   if (window.did?.loadData) {
-    loaded = await window.did.loadData();
+    const loadResult = await window.did.loadData();
+    if (loadResult?.ok === false) {
+      storageWritable = false;
+      storageError = loadResult.error || "Data could not be loaded.";
+    } else {
+      loaded = loadResult?.data ?? loadResult;
+    }
   } else {
     const raw = localStorage.getItem("did-data") || localStorage.getItem("work-timer-data");
     if (raw) loaded = JSON.parse(raw);
@@ -1243,6 +1582,7 @@ async function init() {
   // A leftover session means the previous run never closed it: power cut or crash.
   if (loaded?.sessionStartedAt && loaded.sessionSeconds > 0) {
     const endedAt = recoveredEndTime(loaded);
+    closeWorkSegment(endedAt);
     state.isRunning = false;
     state.lastTick = null;
     state.sessionSeconds = Math.floor(loaded.sessionSeconds);
@@ -1257,7 +1597,7 @@ async function init() {
 
   renderProjects();
   render();
-  persist();
+  if (storageWritable) persist("startup-normalize");
 }
 
 init();

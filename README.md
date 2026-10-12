@@ -24,11 +24,19 @@
   </tr>
   <tr>
     <td align="center"><strong>✏️ Edit project</strong></td>
-    <td align="center"><strong>🕒 Edit session</strong></td>
+    <td align="center"><strong>🕒 Timeline editor</strong></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/edit-project.png" alt="edit project — name, description, and color" width="320" /></td>
-    <td><img src="docs/screenshots/edit-session.png" alt="edit session times and note" width="320" /></td>
+    <td><img src="docs/screenshots/edit-session.png" alt="edit a session's worked periods and pause boundaries on a visual timeline" width="320" /></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>🛡️ Safe legacy editing</strong></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/screenshots/legacy-session.png" alt="older session with inferred pause placement and original duration preserved" width="320" />
+    </td>
   </tr>
   <tr>
     <td align="center" colspan="2"><strong>⚡ Power-cut recovery</strong></td>
@@ -50,9 +58,9 @@ Get the latest installers from **[Releases](https://github.com/ZareSaeed/did/rel
 
 | Platform | 📦 Packages |
 |----------|-------------|
-| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-win-x64-portable.exe) |
-| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-mac-x64.dmg) |
-| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-linux-x86_64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.1.3/did-1.1.3-linux-amd64.deb) |
+| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-win-x64-portable.exe) |
+| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-mac-x64.dmg) |
+| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-linux-x64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-linux-x64.deb) |
 
 ### 🔄 Updating an existing install
 
@@ -64,6 +72,14 @@ Your data is stored separately from the app — updating is safe.
 4. Open **did** — projects and logs are still there
 
 **Windows data folder:** `%APPDATA%\did`
+
+### Data safety
+
+- Saves are written to a flushed temporary file, validated, and then promoted instead of overwriting the live file in place.
+- Checksummed recent and daily backups are kept under `%APPDATA%\did\backups`.
+- If the primary file is damaged, **did** loads the newest valid temporary, previous, or backup copy and preserves the damaged file.
+- If no valid copy exists, saving is disabled rather than replacing the damaged data with empty defaults.
+- CSV is generated on demand from the validated primary data; it is an export, not a second database.
 
 ---
 
@@ -96,6 +112,7 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 ### ⏱️ Timer
 - Big **Start / Pause** button
 - Optional note popup when pausing a session (up to 4000 characters)
+- Work intervals and pause gaps are stored explicitly, so pauses stay excluded from session totals
 - Per-project color accents on the timer UI
 
 ### 📁 Projects
@@ -105,7 +122,8 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 
 ### 📋 Session log
 - Full history kept forever (Timer ↔ Log tabs)
-- Edit session project, times, and notes (notes up to 4000 characters)
+- Edit the complete session timeline: start, finish, pause positions, project, and note
+- Drag pause boundaries on the visual ruler or enter exact timestamps (including sessions crossing midnight)
 - Delete individual rows (with confirmation)
 - Click or drag to select · **Copy** as spreadsheet-ready TSV (oldest first)
 - **Open CSV** — live export next to your app data
@@ -120,6 +138,7 @@ Outputs land in `dist/`. Pushing a `v*` tag triggers GitHub Actions to build all
 - If the PC shuts down mid-session, **did** recovers the record on next launch
 - End time = last second the timer actually recorded
 - ⚠️ Yellow triangle under the project dot marks interrupted sessions
+- Active timers are checkpointed with crash-safe writes every 10 seconds
 
 ### 🔧 Extras
 - GitHub button + in-app version badge

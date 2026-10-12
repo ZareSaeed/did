@@ -1,10 +1,10 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { createStorage } = require("./storage");
 
-const DATA_FILE = path.join(app.getPath("userData"), "did-data.json");
-const LEGACY_DATA_FILE = path.join(app.getPath("userData"), "work-timer-data.json");
 const CSV_FILE = path.join(app.getPath("userData"), "did-log.csv");
+const storage = createStorage(app.getPath("userData"));
 
 // Chromium's shader cache is noisy on Windows and unnecessary for this app.
 app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
@@ -20,6 +20,7 @@ const defaultData = {
   isRunning: false,
   lastTick: null,
   lastHeartbeat: null,
+  sessionSegments: [],
 };
 
 function csvEscape(value) {
@@ -48,6 +49,8 @@ function recordsToCsv(records) {
     "duration",
     "description",
     "interrupted",
+    "pauseSeconds",
+    "segments",
   ];
   const sorted = [...(records || [])].sort(
     (a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime()
@@ -64,6 +67,12 @@ function recordsToCsv(records) {
         formatDuration(record.seconds),
         record.description || "",
         record.interrupted ? "yes" : "",
+        Math.max(
+          0,
+          Math.floor((new Date(record.endedAt).getTime() - new Date(record.startedAt).getTime()) / 1000) -
+            Math.floor(record.seconds || 0)
+        ),
+        record.segments ? JSON.stringify(record.segments) : "",
       ]
         .map(csvEscape)
         .join(",")
@@ -74,27 +83,28 @@ function recordsToCsv(records) {
 
 function writeCsv(records) {
   fs.mkdirSync(path.dirname(CSV_FILE), { recursive: true });
-  fs.writeFileSync(CSV_FILE, recordsToCsv(records), "utf8");
+  const tempFile = `${CSV_FILE}.${process.pid}.tmp`;
+  const fd = fs.openSync(tempFile, "w", 0o600);
+  try {
+    fs.writeFileSync(fd, recordsToCsv(records), "utf8");
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  if (fs.existsSync(CSV_FILE)) fs.unlinkSync(CSV_FILE);
+  fs.renameSync(tempFile, CSV_FILE);
 }
 
 function loadData() {
-  try {
-    const file = fs.existsSync(DATA_FILE)
-      ? DATA_FILE
-      : fs.existsSync(LEGACY_DATA_FILE)
-        ? LEGACY_DATA_FILE
-        : null;
-    if (file) {
-      return { ...defaultData, ...JSON.parse(fs.readFileSync(file, "utf8")) };
-    }
-  } catch (_) {}
-  return { ...defaultData };
+  const result = storage.load();
+  return {
+    ...result,
+    data: result.data ? { ...defaultData, ...result.data } : { ...defaultData },
+  };
 }
 
-function saveData(data) {
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  writeCsv(data.records || []);
+function saveData(data, reason) {
+  return storage.save(data, reason);
 }
 
 function createWindow() {
@@ -107,6 +117,7 @@ function createWindow() {
     maximizable: false,
     fullscreenable: false,
     title: "did",
+    icon: path.join(__dirname, "assets", process.platform === "win32" ? "did-icon.ico" : "did-icon.png"),
     backgroundColor: "#0b1224",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -158,10 +169,45 @@ app.on("window-all-closed", () => {
 
 const REPO_URL = "https://github.com/ZareSaeed/did";
 
-ipcMain.handle("load-data", () => loadData());
-ipcMain.handle("save-data", (_event, data) => {
-  saveData(data);
-  return true;
+ipcMain.handle("load-data", (event) => {
+  try {
+    const result = loadData();
+    if (result.recovered) {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      setImmediate(() => {
+        dialog.showMessageBox(win, {
+          type: "warning",
+          title: "Data recovered",
+          message: "did recovered your data from a last-known-good copy.",
+          detail:
+            "The main data file was missing or damaged. The recovered records are loaded, and the damaged file will be preserved in the corrupt folder.",
+        });
+      });
+    }
+    return { ok: true, ...result };
+  } catch (error) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    setImmediate(() => {
+      dialog.showMessageBox(win, {
+        type: "error",
+        title: "Data could not be loaded",
+        message: "did found damaged data and could not find a valid backup.",
+        detail:
+          "Saving has been disabled so the damaged files are not overwritten. Copy the did data folder before attempting manual recovery.",
+      });
+    });
+    return { ok: false, error: error.message };
+  }
+});
+ipcMain.handle("save-data", (_event, data, reason) => {
+  return saveData(data, reason);
+});
+ipcMain.on("save-data-sync", (event, data, reason) => {
+  try {
+    event.returnValue = saveData(data, reason);
+  } catch (error) {
+    event.returnValue = { ok: false, error: error.message };
+  }
 });
 ipcMain.handle("get-app-info", () => ({
   version: app.getVersion(),
@@ -175,8 +221,8 @@ ipcMain.handle("open-external", async (_event, url) => {
   return { ok: true };
 });
 ipcMain.handle("open-csv", async () => {
-  const data = loadData();
-  writeCsv(data.records || []);
+  const result = loadData();
+  writeCsv(result.data.records || []);
   const error = await shell.openPath(CSV_FILE);
   if (error) {
     shell.showItemInFolder(CSV_FILE);
