@@ -153,3 +153,24 @@ test("timer-only checkpoints do not create recent backup churn", (t) => {
     .filter((name) => name.startsWith("recent-"));
   assert.equal(recentAfterChange.length, 1);
 });
+
+test("removes an incomplete temporary file when a save runs out of space", (t) => {
+  const directory = withTempDirectory(t);
+  const storage = createStorage(directory);
+  const originalWriteFileSync = fs.writeFileSync;
+  fs.writeFileSync = (target, ...args) => {
+    if (typeof target === "number") {
+      const error = new Error("no space left on device");
+      error.code = "ENOSPC";
+      throw error;
+    }
+    return originalWriteFileSync(target, ...args);
+  };
+  try {
+    assert.throws(() => storage.save(makeState([makeRecord()])), /no space/);
+  } finally {
+    fs.writeFileSync = originalWriteFileSync;
+  }
+  const leftovers = fs.readdirSync(directory).filter((name) => name.startsWith(".did-data-"));
+  assert.deepEqual(leftovers, []);
+});

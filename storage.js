@@ -260,9 +260,21 @@ function createStorage(userDataPath, options = {}) {
       userDataPath,
       `.did-data-${process.pid}-${timestampForFile(savedAt)}-${crypto.randomBytes(3).toString("hex")}.json`
     );
-    durableWrite(tempPath, text);
+    try {
+      durableWrite(tempPath, text);
+    } catch (error) {
+      try {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      } catch (_) {}
+      throw error;
+    }
     const temp = readCandidate(tempPath);
-    if (!temp.ok) throw new Error(`Temporary save validation failed: ${temp.error.message}`);
+    if (!temp.ok) {
+      try {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      } catch (_) {}
+      throw new Error(`Temporary save validation failed: ${temp.error.message}`);
+    }
 
     const primary = fs.existsSync(primaryPath) ? readCandidate(primaryPath) : null;
     const nextSignature = durableSignature(data);

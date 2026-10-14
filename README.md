@@ -58,9 +58,9 @@ Get the latest installers from **[Releases](https://github.com/ZareSaeed/did/rel
 
 | Platform | 📦 Packages |
 |----------|-------------|
-| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-win-x64-portable.exe) |
-| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-mac-x64.dmg) |
-| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-linux-x64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.2.0/did-1.2.0-linux-x64.deb) |
+| 🪟 **Windows** | [Installer](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-win-x64-setup.exe) · [Portable](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-win-x64-portable.exe) |
+| 🍎 **macOS** | [Apple Silicon](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-mac-arm64.dmg) · [Intel](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-mac-x64.dmg) |
+| 🐧 **Linux** | [AppImage](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-linux-x64.AppImage) · [deb](https://github.com/ZareSaeed/did/releases/download/v1.2.1/did-1.2.1-linux-x64.deb) |
 
 ### 🔄 Updating an existing install
 

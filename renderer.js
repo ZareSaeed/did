@@ -109,6 +109,8 @@ let editSelectedColor = COLOR_PALETTE[0];
 let editingRecordId = null;
 let storageWritable = true;
 let storageError = null;
+let storageLoadFailed = false;
+let storageRetryTimer = null;
 let lastCheckpointPersistAt = 0;
 let editTimes = {
   start: { h: 0, m: 0, s: 0 },
@@ -176,17 +178,44 @@ function durationFromEditTimes(record) {
 }
 
 function persist(reason = "state-update") {
-  if (!storageWritable) return Promise.resolve(false);
+  if (storageLoadFailed) return Promise.resolve(false);
   if (window.did?.saveData) {
-    return window.did.saveData(state, reason).catch((error) => {
+    return window.did.saveData(state, reason)
+      .then(() => {
+        const recovered = !storageWritable || storageError;
+        storageWritable = true;
+        storageError = null;
+        if (storageRetryTimer) {
+          clearTimeout(storageRetryTimer);
+          storageRetryTimer = null;
+        }
+        if (recovered) render();
+        return true;
+      })
+      .catch((error) => {
+        storageWritable = false;
+        storageError = error?.message || "Data could not be saved.";
+        if (!storageRetryTimer) {
+          storageRetryTimer = setTimeout(() => {
+            storageRetryTimer = null;
+            persist("storage-retry");
+          }, 10000);
+        }
+        render();
+        return false;
+      });
+  } else {
+    try {
+      localStorage.setItem("did-data", JSON.stringify(state));
+      storageWritable = true;
+      storageError = null;
+      return Promise.resolve(true);
+    } catch (error) {
       storageWritable = false;
       storageError = error?.message || "Data could not be saved.";
       render();
-      return false;
-    });
-  } else {
-    localStorage.setItem("did-data", JSON.stringify(state));
-    return Promise.resolve(true);
+      return Promise.resolve(false);
+    }
   }
 }
 
@@ -967,12 +996,12 @@ function render() {
   projectTotal.textContent = `Total · ${formatTime(getProjectTotal(state.selectedProject))}`;
 
   if (storageError) {
-    statusLabel.textContent = "Storage error";
-    statusLabel.classList.remove("running");
-    toggleBtn.classList.remove("is-running");
-    toggleBtn.disabled = true;
-    toggleBtn.setAttribute("aria-pressed", "false");
-    toggleLabel.textContent = "Unavailable";
+    statusLabel.textContent = "Storage error · retrying";
+    statusLabel.classList.toggle("running", state.isRunning);
+    toggleBtn.classList.toggle("is-running", state.isRunning);
+    toggleBtn.disabled = !state.isRunning;
+    toggleBtn.setAttribute("aria-pressed", state.isRunning ? "true" : "false");
+    toggleLabel.textContent = state.isRunning ? "Pause" : "Retrying";
   } else if (state.isRunning) {
     toggleBtn.disabled = false;
     statusLabel.textContent = "Tracking";
@@ -1499,7 +1528,7 @@ window.addEventListener("beforeunload", (event) => {
   } else if (state.isRunning || state.sessionStartedAt) {
     commitCurrentSession("");
   }
-  if (storageWritable && window.did?.saveDataSync) {
+  if (!storageLoadFailed && window.did?.saveDataSync) {
     const result = window.did.saveDataSync(state, "window-close");
     if (result?.ok === false) {
       event.preventDefault();
@@ -1525,6 +1554,7 @@ async function init() {
     const loadResult = await window.did.loadData();
     if (loadResult?.ok === false) {
       storageWritable = false;
+      storageLoadFailed = true;
       storageError = loadResult.error || "Data could not be loaded.";
     } else {
       loaded = loadResult?.data ?? loadResult;
